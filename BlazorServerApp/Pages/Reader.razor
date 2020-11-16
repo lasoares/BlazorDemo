@@ -1,0 +1,185 @@
+﻿@page "/reader"
+
+@using CommonLib.Devices;
+@using CommonLib.Models;
+@inject IRfidReader _rfidReader;
+
+<h1>Inventory Page</h1>
+
+<form class="form-inline">
+    <div class="form-group mb-2">
+        <label for="staticAddress" class="sr-only">IP Address</label>
+    </div>
+    <div class="form-group mx-sm-3 mb-2">
+        <label for="inputAddress" class="sr-only"></label>
+        <input type="text" value="@_address" @oninput="(EventArgs) => { SetValue(EventArgs.Value.ToString()); }" class="form-control" id="inputAddress" placeholder="IP Address">
+    </div>
+    <div class="form-group mx-sm-3 mb-2">
+        <button type="button" id="connectButton" @onclick="Connect" class="btn btn-primary mb-2">Connect</button>
+    </div>
+    <div class="form-group mx-sm-3 mb-2">
+        <button type="button" id="disconnectButton" @onclick="Disconnect" class="btn btn-danger mb-2">Disconnect</button>
+    </div>
+</form>
+
+<br />
+
+<ul class="list-group">
+    <li class="list-group-item d-flex justify-content-between align-items-center">
+        Total Reads
+        <span class="badge badge-primary badge-pill">@_totalReads.ToString()</span>
+    </li>
+    <li class="list-group-item d-flex justify-content-between align-items-center">
+        Total Epc
+        <span class="badge badge-primary badge-pill">@_totalEpcs.ToString()</span>
+    </li>
+</ul>
+
+<br />
+
+<button type="button" class="btn btn-primary btn-lg"  @onclick="StartRfid" >Start RFID</button>
+<button type="button" class="btn btn-danger btn-lg"  @onclick="StopRfid" >Stop RFID</button>
+<button type="button" id="clearButton" @onclick="Clear" class="btn btn-warning btn-lg">Clear EPC's</button>
+
+<br />
+<br />
+
+<h3>List of EPC's</h3>
+
+<br />
+
+@if (_tags == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>EPC</th>
+                <th>RSSI (db)</th>
+                <th>Antenna (ID)</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var tag in _tags)
+            {
+                <tr>
+                    <td>@tag.Key</td>
+                    <td>@tag.Value.Item1</td>
+                    <td>@tag.Value.Item2</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+
+    private string _address;
+    private int _totalReads;
+    private int _totalEpcs;
+    private Dictionary<string, Tuple<double, int>> _tags;
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        //Load data
+        _tags = new Dictionary<string, Tuple<double, int>>();
+        _totalReads = _totalEpcs = 0;
+
+    }
+
+    private void _readerImpinj_TagsEventSender(object sender, ReaderEventArgs e)
+    {
+        if (e.EventType != ReaderEventArgs.EventsType.TAGS_REPORT)
+            return;
+
+        foreach(var tag in e.Tags)
+        {
+            var tagModel = new TagModel
+            {
+                Epc = tag.Key,
+                Rssi = tag.Value.Item1,
+                Antenna = tag.Value.Item2
+            };
+
+            Console.WriteLine($"Tag report received: EPC:{tag.Key} - RSSI:{tag.Value.Item1} - AntennaID: {tag.Value.Item2}");
+            Console.WriteLine();
+            ProcessEpc(tagModel);
+        }
+    }
+
+    private async Task ProcessEpc(TagModel tag)
+    {
+        if (!_tags.ContainsKey(tag.Epc))
+        {
+            _tags.Add(tag.Epc, new Tuple<double, int>(tag.Rssi, tag.Antenna));
+            _totalEpcs++;
+        }
+        else
+        {
+            _tags[tag.Epc] = new Tuple<double, int>(tag.Rssi, tag.Antenna);
+        }
+        _totalReads++;
+
+        await InvokeAsync(() =>
+        {
+            base.StateHasChanged();
+        });
+
+    }
+
+    private async Task Clear()
+    {
+        _totalEpcs = _totalReads = 0;
+        _tags.Clear();
+
+        await InvokeAsync(() =>
+        {
+            base.StateHasChanged();
+        });
+    }
+
+
+    private async Task Connect()
+    {
+        if (string.IsNullOrEmpty(_address))
+        {
+            _address = "192.168.1.166";
+        }
+
+        _rfidReader.Address = _address;
+        await _rfidReader.Connect();
+    }
+
+    private async Task StartRfid()
+    {
+        if (_rfidReader != null && !_rfidReader.IsReading)
+        {
+            _rfidReader.TagsEventSender += _readerImpinj_TagsEventSender;
+            await _rfidReader.StartReading();
+        }
+    }
+
+    private async Task StopRfid()
+    {
+        if (_rfidReader != null && _rfidReader.IsReading)
+        {
+            await _rfidReader.StopReading();
+            _rfidReader.TagsEventSender -= _readerImpinj_TagsEventSender;
+        }
+    }
+
+    private async Task Disconnect()
+    {
+        await _rfidReader.Disconnect();
+    }
+
+    private void SetValue(string value)
+    {
+        _address = value;
+    }
+
+}
