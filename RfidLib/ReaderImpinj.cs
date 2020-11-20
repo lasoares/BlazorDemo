@@ -196,8 +196,11 @@ namespace RfidReaderLibrary
             {
                 try
                 {
-                    impinjReader.Start();
-                    _isReading = true;
+                    if (IsConnected)
+                    {
+                        impinjReader.Start();
+                        _isReading = true;
+                    }
                 }
                 catch (OctaneSdkException ex)
                 {
@@ -219,8 +222,11 @@ namespace RfidReaderLibrary
             {
                 try
                 {
-                    impinjReader.Stop();
-                    _isReading = false;
+                    if (IsConnected)
+                    {
+                        impinjReader.Stop();
+                        _isReading = false;
+                    }
                 }
                 catch (OctaneSdkException ex)
                 {

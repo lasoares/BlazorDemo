@@ -21,10 +21,6 @@ namespace BlazorWasm
 
             builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
 
-            //builder.Services.AddSingleton<IRfidReader, ReaderImpinj>();
-            //@using CommonLib.Devices; in razor page
-            //@inject IRfidReader _rfidReader; in razor page
-
             await builder.Build().RunAsync();
         }
     }

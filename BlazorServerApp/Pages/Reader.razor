@@ -3,22 +3,26 @@
 @using CommonLib.Devices;
 @using CommonLib.Models;
 @inject IRfidReader _rfidReader;
+@inject IToastService toastService
 
 <h1>Inventory Page</h1>
 
 <form class="form-inline">
     <div class="form-group mb-2">
-        <label for="staticAddress" class="sr-only">IP Address</label>
+        <label for="staticAddress">RFID Reader</label>
     </div>
     <div class="form-group mx-sm-3 mb-2">
-        <label for="inputAddress" class="sr-only"></label>
         <input type="text" value="@_address" @oninput="(EventArgs) => { SetValue(EventArgs.Value.ToString()); }" class="form-control" id="inputAddress" placeholder="IP Address">
     </div>
     <div class="form-group mx-sm-3 mb-2">
-        <button type="button" id="connectButton" @onclick="Connect" class="btn btn-primary mb-2">Connect</button>
-    </div>
-    <div class="form-group mx-sm-3 mb-2">
-        <button type="button" id="disconnectButton" @onclick="Disconnect" class="btn btn-danger mb-2">Disconnect</button>
+        @if (!_rfidReader.IsConnected)
+        {
+            <button type="button" id="connectButton" @onclick="Connect" class="btn btn-primary mb-2">Connect</button>
+        }
+        @if (_rfidReader.IsConnected)
+        {
+            <button type="button" id="disconnectButton" @onclick="Disconnect" class="btn btn-danger mb-2">Disconnect</button>
+        }
     </div>
 </form>
 
@@ -36,11 +40,23 @@
 </ul>
 
 <br />
+@if (!_rfidReader.IsReading)
+{
+    <button type="button" class="btn btn-primary btn-lg mr-2" @onclick="StartRfid">Start RFID</button>
+}
+@if (_rfidReader.IsReading)
+{
+    <button type="button" class="btn btn-danger btn-lg mr-2" @onclick="StopRfid">Stop RFID</button>
+}
 
-<button type="button" class="btn btn-primary btn-lg"  @onclick="StartRfid" >Start RFID</button>
-<button type="button" class="btn btn-danger btn-lg"  @onclick="StopRfid" >Stop RFID</button>
-<button type="button" id="clearButton" @onclick="Clear" class="btn btn-warning btn-lg">Clear EPC's</button>
-
+@if (_totalReads > 0)
+{
+    <button type="button" @onclick="Clear" class="btn btn-warning btn-lg">Clear EPC's</button>
+}
+@if (_totalReads == 0)
+{
+    <button type="button" class="btn btn-warning btn-lg" disabled>Clear EPC's</button>
+}
 <br />
 <br />
 
@@ -96,7 +112,7 @@ else
         if (e.EventType != ReaderEventArgs.EventsType.TAGS_REPORT)
             return;
 
-        foreach(var tag in e.Tags)
+        foreach (var tag in e.Tags)
         {
             var tagModel = new TagModel
             {
@@ -152,10 +168,16 @@ else
 
         _rfidReader.Address = _address;
         await _rfidReader.Connect();
+        toastService.ShowSuccess("Connected to reader!");
     }
 
     private async Task StartRfid()
     {
+        if(_rfidReader!=null && !_rfidReader.IsConnected)
+        {
+            toastService.ShowError("You are not connected to the reader!");
+        }
+
         if (_rfidReader != null && !_rfidReader.IsReading)
         {
             _rfidReader.TagsEventSender += _readerImpinj_TagsEventSender;
@@ -175,6 +197,7 @@ else
     private async Task Disconnect()
     {
         await _rfidReader.Disconnect();
+        toastService.ShowWarning("Disconnected from reader!");
     }
 
     private void SetValue(string value)

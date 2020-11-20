@@ -13,6 +13,7 @@ using BlazorServerApp.Data;
 using DataAccessLibrary;
 using CommonLib.Devices;
 using RfidReaderLibrary;
+using Blazored.Toast;
 
 namespace BlazorServerApp
 {
@@ -31,6 +32,7 @@ namespace BlazorServerApp
         {
             services.AddRazorPages();
             services.AddServerSideBlazor();
+            services.AddBlazoredToast();
             services.AddSingleton<WeatherForecastService>();
             services.AddTransient<ISqlDataAccess, SqlDataAccess>();
             services.AddTransient<IPeopleData, PeopleData>();

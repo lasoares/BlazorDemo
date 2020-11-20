@@ -25,6 +25,11 @@
     </div>
 </form>
 
+<div>
+    <label for="connStatus" class="sr-only">Connection Staasdsatus:</label>
+    <label for="connStatus" class="sr-only">@ConnectionStatus</label>
+</div>
+
 <br />
 
 <ul class="list-group">
@@ -87,6 +92,14 @@ else
     private static IMqttClient _mqttClient;
     private static IMqttClientOptions _mqttOptions;
 
+    public string ConnectionStatus
+    {
+        get
+        {
+            return _mqttClient == null ? "Disconnected" : _mqttClient.IsConnected ? "Connected" : "Disconnected";
+        }
+    }
+
     protected override async Task OnInitializedAsync()
     {
         //Load data
@@ -100,8 +113,8 @@ else
         {
             Console.WriteLine("### CONNECTED WITH SERVER ###");
 
-            // Subscribe to a topic
-            await _mqttClient.SubscribeAsync(new MqttTopicFilterBuilder().WithTopic("MyTopic").Build());
+        // Subscribe to a topic
+        await _mqttClient.SubscribeAsync(new MqttTopicFilterBuilder().WithTopic("MyTopic").Build());
 
             Console.WriteLine("### SUBSCRIBED ###");
         });
@@ -113,8 +126,8 @@ else
             Console.WriteLine($"Message Received Payload = {payload} \t Topic = {e.ApplicationMessage.Topic}");
             Console.WriteLine();
 
-            //var readOnlySpan = new ReadOnlySpan<byte>(e.ApplicationMessage.Payload);
-            var tag = JsonSerializer.Deserialize<TagModel>(payload);
+        //var readOnlySpan = new ReadOnlySpan<byte>(e.ApplicationMessage.Payload);
+        var tag = JsonSerializer.Deserialize<TagModel>(payload);
 
             await ProcessEpc(tag);
 
